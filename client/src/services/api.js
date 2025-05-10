@@ -123,26 +123,10 @@ export const deleteLecturer = async (id) => {
 export const getLecturerTimetable = async () => {
   try {
     const response = await api.get('/lecturer/timetable');
-    console.log('Lecturer timetable response:', response);
-    
-    if (!response.data) {
-      throw new Error('No response data received');
-    }
-    
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to fetch timetable');
-    }
-    
-    return response.data.data || [];
+    return response.data;
   } catch (error) {
-    console.error('Error in getLecturerTimetable:', error);
-    if (error.response?.data?.message) {
-      throw new Error(error.response.data.message);
-    } else if (error.message) {
-      throw new Error(error.message);
-    } else {
-      throw new Error('Failed to fetch lecturer timetable. Please check server logs.');
-    }
+    console.error('Error fetching lecturer timetable:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch timetable');
   }
 };
 
@@ -227,10 +211,7 @@ export const deleteHall = async (id) => {
 export const getBatches = async () => {
   try {
     const response = await api.get('/admin/batches');
-    if (response.data.success) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || 'Failed to fetch batches');
+    return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Error fetching batches');
   }
@@ -289,17 +270,12 @@ export const generateTimetable = async () => {
 export const getTimetable = async () => {
   try {
     const response = await api.get('/admin/timetable');
-    console.log('Raw timetable response:', response);
-    
     if (!response.data) {
       throw new Error('No response data received');
     }
-    
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to fetch timetable');
     }
-    
-    // Return the data array directly
     return response.data.data;
   } catch (error) {
     console.error('Error in getTimetable:', error);
@@ -371,7 +347,7 @@ export const handleChangeRequest = async (id, data) => {
     const response = await api.put(`/admin/change-requests/${id}`, data);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to handle change request');
+    throw error;
   }
 };
 
@@ -381,16 +357,20 @@ export const registerStudent = async (data) => {
     const response = await api.post('/auth/register/student', data);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Registration failed');
+    console.error('Registration API error:', error.response?.data);
+    if (error.response?.data?.error) {
+      throw new Error(error.response.data.error);
+    }
+    throw new Error('Registration failed. Please try again.');
   }
 };
 
 export const verifyRegistrationCode = async (code) => {
   try {
-    const response = await api.get(`/auth/verify-registration-code/${code}`);
+    const response = await api.post('/auth/verify-code', { registration_code: code });
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Invalid registration code');
+    throw new Error(error.response?.data?.message || 'Failed to verify registration code');
   }
 };
 
@@ -413,5 +393,229 @@ export const getStudentBatches = async () => {
   } catch (error) {
     console.error('Error in getStudentBatches:', error);
     throw new Error(error.response?.data?.message || 'Failed to fetch batches');
+  }
+};
+
+export const getSlotAlternatives = async (payload) => {
+  try {
+    const response = await api.post('/admin/timetable/alternatives', payload);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch slot alternatives');
+  }
+};
+
+export const addTimetableSlot = async (slotData) => {
+  try {
+    const response = await api.post('/admin/timetable', slotData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to add timetable slot');
+  }
+};
+
+// Productivity API functions
+export const startProductivitySession = async (data) => {
+  try {
+    const response = await api.post('/productivity/start', data);
+    return response.data;
+  } catch (error) {
+    console.error('Error starting productivity session:', error);
+    throw new Error(error.response?.data?.message || 'Failed to start session');
+  }
+};
+
+export const endProductivitySession = async (sessionId) => {
+  try {
+    const response = await api.post('/productivity/end', { sessionId });
+    return response.data;
+  } catch (error) {
+    console.error('Error ending productivity session:', error);
+    throw new Error(error.response?.data?.message || 'Failed to end session');
+  }
+};
+
+export const getProductivityStats = async (params) => {
+  try {
+    const response = await api.get('/productivity/stats', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching productivity stats:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch stats');
+  }
+};
+
+export const getProductivityHistory = async (params) => {
+  try {
+    const response = await api.get('/productivity/history', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching productivity history:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch history');
+  }
+};
+
+// Voice Command API functions
+export const processVoiceCommand = async (command) => {
+  try {
+    const response = await api.post('/voice/command', { command });
+    return response.data;
+  } catch (error) {
+    console.error('Error processing voice command:', error);
+    throw new Error(error.response?.data?.message || 'Failed to process command');
+  }
+};
+
+export const getVoiceCommandHistory = async (params) => {
+  try {
+    const response = await api.get('/voice/history', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching voice command history:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch history');
+  }
+};
+
+// Lecturer: Get batches (with group_count)
+export const getLecturerBatches = async () => {
+  const response = await api.get('/lecturer/batches');
+  return response.data;
+};
+
+// Lecturer: Get their own assignments
+export const getMyAssignments = async () => {
+  try {
+    const response = await api.get('/lecturer/assignments');
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch assignments');
+  }
+};
+
+// Lecturer: Get modules by batch
+export const getModulesByBatch = async (batchId) => {
+  // You may want a dedicated endpoint; here we use timetable as a workaround
+  const response = await api.get('/lecturer/timetable');
+  const modules = Array.from(new Set((response.data || []).filter(e => e.batch?._id === batchId).map(e => JSON.stringify(e.module)))).map(e => JSON.parse(e));
+  return { data: modules };
+};
+
+// Lecturer: Create assignment
+export const createAssignment = async (data) => {
+  try {
+    const response = await api.post('/lecturer/assignments', data);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to create assignment');
+  }
+};
+
+// Lecturer: Update their own assignment
+export const updateAssignment = async (id, data) => {
+  try {
+    const response = await api.put(`/lecturer/assignments/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to update assignment');
+  }
+};
+
+export const deleteAssignment = async (id) => {
+  try {
+    const response = await api.delete(`/lecturer/assignments/${id}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to delete assignment');
+  }
+};
+
+// Student: Get assignments for student's batch/module
+export const getStudentAssignments = async () => {
+  const response = await api.get('/student/assignments');
+  return response.data;
+};
+
+// Attendance API (Lecturer)
+export const startAttendanceSession = async (batch, group) => {
+  const response = await api.post('/lecturer/attendance/start', { batch, group });
+  return response.data;
+};
+
+export const stopAttendanceSession = async (sessionId) => {
+  const response = await api.post('/lecturer/attendance/stop', { sessionId });
+  return response.data;
+};
+
+export const getAttendanceSession = async (batch, group) => {
+  const response = await api.get('/lecturer/attendance/session', { params: { batch, group } });
+  return response.data;
+};
+
+export const generateAttendancePDF = async (sessionId) => {
+  // Returns a blob for download
+  const response = await api.get(`/lecturer/attendance/pdf?sessionId=${sessionId}`, { responseType: 'blob' });
+  return response;
+};
+
+// Attendance API (Student)
+export const getOpenAttendanceSession = async (batch, group) => {
+  const response = await api.get('/student/attendance/open', { params: { batch, group } });
+  return response.data;
+};
+
+export const markAttendance = async (sessionId) => {
+  const response = await api.post('/student/attendance/mark', { sessionId });
+  return response.data;
+};
+
+// Get user notifications
+export const getNotifications = () => {
+  return api.get('/notifications');
+};
+
+// Mark notification as read
+export const markAsRead = (id) => {
+  return api.put(`/notifications/${id}/read`);
+};
+
+// Mark all notifications as read
+export const markAllAsRead = () => {
+  return api.put('/notifications/read-all');
+};
+
+// Analytics API functions
+export const getHallUsage = async (params) => {
+  try {
+    const response = await api.get('/analytics/hall-usage', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch hall usage data');
+  }
+};
+
+export const getLecturerLoad = async (params) => {
+  try {
+    const response = await api.get('/analytics/lecturer-load', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch lecturer load data');
+  }
+};
+
+export const getTimeslotPopularity = async (params) => {
+  try {
+    const response = await api.get('/analytics/timeslot-popularity', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch timeslot popularity data');
+  }
+};
+
+export const getBatchLoad = async (params) => {
+  try {
+    const response = await api.get('/analytics/batch-load', { params });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch batch load data');
   }
 };
