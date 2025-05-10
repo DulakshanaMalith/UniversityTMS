@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -37,13 +37,19 @@ const days = [
   'Friday'
 ];
 
-const TimeSlotChangeRequest = ({ timetableEntry, onRequestSubmitted }) => {
+const TimeSlotChangeRequest = ({ timetableEntry, onRequestSubmitted, initialDay, initialTimeSlot }) => {
   const [open, setOpen] = useState(false);
-  const [requestedDay, setRequestedDay] = useState('');
-  const [requestedTimeSlot, setRequestedTimeSlot] = useState('');
+  const [requestedDay, setRequestedDay] = useState(initialDay || '');
+  const [requestedTimeSlot, setRequestedTimeSlot] = useState(initialTimeSlot || '');
   const [reason, setReason] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // If initialDay/initialTimeSlot change, update state
+  React.useEffect(() => {
+    if (initialDay) setRequestedDay(initialDay);
+    if (initialTimeSlot) setRequestedTimeSlot(initialTimeSlot);
+  }, [initialDay, initialTimeSlot]);
 
   const handleOpen = () => {
     setOpen(true);
@@ -192,6 +198,9 @@ export const ChangeRequestsList = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [prefill, setPrefill] = useState({});
+  const [prefillEntry, setPrefillEntry] = useState(null);
+  const requestDialogRef = useRef();
 
   useEffect(() => {
     fetchRequests();
@@ -200,20 +209,25 @@ export const ChangeRequestsList = () => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await getLecturerChangeRequests();
-      console.log('Change requests response:', response);
       if (response.success) {
-        setRequests(response.data);
+        const validRequests = response.data.filter(request => request.timetableEntry);
+        setRequests(validRequests);
       } else {
         setError(response.message || 'Failed to fetch requests');
       }
-      setError(null);
     } catch (err) {
-      console.error('Error fetching requests:', err);
       setError(err.message || 'Failed to fetch requests');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handler to open the request dialog prefilled with a suggested slot
+  const handlePrefillRequest = (entry, day, timeSlot) => {
+    setPrefill({ day, timeSlot });
+    setPrefillEntry(entry);
   };
 
   if (loading) return <Box sx={{ p: 2 }}><CircularProgress /></Box>;
@@ -221,58 +235,91 @@ export const ChangeRequestsList = () => {
   if (!requests.length) return <Typography>No change requests found.</Typography>;
 
   return (
-    <List>
-      {requests.map((request) => (
-        <ListItem
-          key={request._id}
-          sx={{ mb: 2 }}
-          component={Paper}
-          variant="outlined"
-        >
-          <Box sx={{ width: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Typography variant="subtitle1">
-                {request.timetableEntry?.module?.module_name || 'Unknown Module'}
+    <>
+      {prefillEntry && (
+        <TimeSlotChangeRequest
+          timetableEntry={prefillEntry}
+          onRequestSubmitted={() => {
+            setPrefill({});
+            setPrefillEntry(null);
+            fetchRequests();
+          }}
+          initialDay={prefill.day}
+          initialTimeSlot={prefill.timeSlot}
+        />
+      )}
+      <List>
+        {requests.map((request) => (
+          <ListItem
+            key={request._id}
+            sx={{ mb: 2 }}
+            component={Paper}
+            variant="outlined"
+          >
+            <Box sx={{ width: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="subtitle1">
+                  {request.timetableEntry?.module?.module_name || 'Unknown Module'}
+                </Typography>
+                <Chip
+                  label={request.status}
+                  color={
+                    request.status === 'Approved'
+                      ? 'success'
+                      : request.status === 'Rejected'
+                      ? 'error'
+                      : 'warning'
+                  }
+                  size="small"
+                />
+              </Box>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Current: {request.timetableEntry?.day || 'N/A'}, {request.timetableEntry?.timeSlot || 'N/A'}
               </Typography>
-              <Chip
-                label={request.status}
-                color={
-                  request.status === 'Approved'
-                    ? 'success'
-                    : request.status === 'Rejected'
-                    ? 'error'
-                    : 'warning'
-                }
-                size="small"
-              />
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Requested: {request.requestedDay || 'N/A'}, {request.requestedTimeSlot || 'N/A'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Batch: {request.timetableEntry?.batch?.batch_name || 'Unknown Batch'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Hall: {request.timetableEntry?.hall?.hall_name || 'Unknown Hall'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Reason: {request.reason || 'No reason provided'}
+              </Typography>
+              {request.rejectionReason && (
+                <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+                  Rejection Reason: {request.rejectionReason}
+                </Typography>
+              )}
+              {/* Show suggested slots if present */}
+              {request.suggestedSlots && request.suggestedSlots.length > 0 && (
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
+                    Suggested Available Slots:
+                  </Typography>
+                  {request.suggestedSlots.map((slot, idx) => (
+                    <Button
+                      key={idx}
+                      variant="outlined"
+                      size="small"
+                      sx={{ mr: 1, mt: 1 }}
+                      onClick={() => handlePrefillRequest(request.timetableEntry, slot.day, slot.timeSlot)}
+                    >
+                      {slot.day}, {slot.timeSlot} (Request this slot)
+                    </Button>
+                  ))}
+                </Box>
+              )}
+              <Typography variant="caption">
+                Submitted: {new Date(request.createdAt).toLocaleString()}
+              </Typography>
             </Box>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Current: {request.timetableEntry?.day}, {request.timetableEntry?.timeSlot}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Requested: {request.requestedDay}, {request.requestedTimeSlot}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Batch: {request.timetableEntry?.batch?.batch_name || 'Unknown Batch'}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Hall: {request.timetableEntry?.hall?.hall_name || 'Unknown Hall'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Reason: {request.reason}
-            </Typography>
-            {request.rejectionReason && (
-              <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-                Rejection Reason: {request.rejectionReason}
-              </Typography>
-            )}
-            <Typography variant="caption">
-              Submitted: {new Date(request.createdAt).toLocaleString()}
-            </Typography>
-          </Box>
-        </ListItem>
-      ))}
-    </List>
+          </ListItem>
+        ))}
+      </List>
+    </>
   );
 };
 
