@@ -20,19 +20,15 @@ import {
   Alert,
   Chip,
   Container,
-  Grid,
-  Card,
-  CardContent,
-  Avatar,
-  Tooltip,
-  Divider
+  useTheme,
+  alpha
 } from '@mui/material';
-import { Edit, Delete, Add, Person, Email, Phone, School } from '@mui/icons-material';
+import { Edit, Delete } from '@mui/icons-material';
 import { getLecturers, addLecturer, updateLecturer, deleteLecturer, getModules } from '../../services/api';
-import AdminLayout from './AdminLayout';
-import { validateName, validateEmail, validateDepartment, validatePassword } from '../../utils/validations';
+import { SLIIT_LOGO } from '../../assets/images';
 
 const LecturerManagement = () => {
+  const theme = useTheme();
   const [lecturers, setLecturers] = useState([]);
   const [modules, setModules] = useState([]);
   const [open, setOpen] = useState(false);
@@ -113,25 +109,18 @@ const LecturerManagement = () => {
     switch (name) {
       case 'name':
         if (!value) return 'Name is required';
-        if (!validateName(value)) return 'Name should only contain letters and spaces';
+        if (value.length < 2) return 'Name must be at least 2 characters';
         return '';
       case 'email':
         if (!value) return 'Email is required';
-        if (!validateEmail(value)) return 'Please enter a valid email address';
-        return '';
-      case 'department':
-        if (!value) return 'Department is required';
-        if (!validateDepartment(value)) return 'Department should only contain letters and spaces';
-        return '';
-      case 'password':
-        if (!editMode && !value) return 'Password is required for new lecturers';
-        if (!editMode && !validatePassword(value)) {
-          return 'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character';
-        }
+        if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format';
         return '';
       case 'phone_number':
         if (!value) return 'Phone number is required';
         if (!/^\d{10}$/.test(value)) return 'Phone number must be 10 digits';
+        return '';
+      case 'department':
+        if (!value) return 'Department is required';
         return '';
       case 'specialization':
         if (!value || value.length === 0) return 'At least one specialization is required';
@@ -140,6 +129,10 @@ const LecturerManagement = () => {
         if (!value) return 'Rank is required';
         return '';
       case 'modules':
+        return '';
+      case 'password':
+        if (!editMode && !value) return 'Password is required for new lecturers';
+        if (!editMode && value.length < 6) return 'Password must be at least 6 characters';
         return '';
       default:
         return '';
@@ -193,7 +186,7 @@ const LecturerManagement = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Update form data
     setFormData(prev => ({
       ...prev,
@@ -262,316 +255,249 @@ const LecturerManagement = () => {
     }
   };
 
-  const renderLecturerCard = (lecturer) => (
-    <Grid item xs={12} sm={6} md={4} key={lecturer._id}>
-      <Card 
-        sx={{ 
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'transform 0.2s',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: 3
-          }
-        }}
-      >
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Avatar 
-              sx={{ 
-                width: 56, 
-                height: 56, 
-                mr: 2,
-                bgcolor: 'primary.main'
-              }}
-            >
-              <Person sx={{ fontSize: 32 }} />
-            </Avatar>
-            <Box>
-              <Typography variant="h6" component="div">
-                {lecturer.name}
-              </Typography>
-              <Typography color="text.secondary" variant="subtitle2">
-                {lecturer.rank}
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Email sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="body2">{lecturer.email}</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Phone sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="body2">{lecturer.phone_number || 'N/A'}</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <School sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="body2">{lecturer.department}</Typography>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Divider sx={{ my: 1 }} />
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                Specializations
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {lecturer.specialization?.map((spec) => (
-                  <Chip 
-                    key={spec} 
-                    label={spec} 
-                    size="small" 
-                    color="primary"
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Divider sx={{ my: 1 }} />
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                Modules
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {lecturer.modules && Array.isArray(lecturer.modules) && lecturer.modules.map((module) => {
-                  let moduleName = '';
-                  if (typeof module === 'object') {
-                    moduleName = module.module_name || module.name;
-                  } else {
-                    const foundModule = modules.find(m => m._id === module);
-                    moduleName = foundModule ? foundModule.module_name : module;
-                  }
-                  return (
-                    <Chip
-                      key={typeof module === 'object' ? module._id : module}
-                      label={moduleName}
-                      size="small"
-                      color="secondary"
-                      variant="outlined"
-                    />
-                  );
-                })}
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-        
-        <Box sx={{ mt: 'auto', p: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Edit Lecturer">
-            <IconButton 
-              color="primary" 
-              onClick={() => handleEdit(lecturer)}
-              size="small"
-            >
-              <Edit />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete Lecturer">
-            <IconButton 
-              color="error" 
-              onClick={() => handleDelete(lecturer._id)}
-              size="small"
-            >
-              <Delete />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Card>
-    </Grid>
-  );
-
   return (
-    <AdminLayout 
-      title="Lecturer Management"
-      actions={
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<Add />}
-          onClick={handleOpen}
-        >
-          Add New Lecturer
-        </Button>
+    <Box sx={{
+      minHeight: '100vh',
+      position: 'relative',
+      bgcolor: alpha(theme.palette.primary.main, 0.01),
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: '220px',
+        height: '220px',
+        background: `url(${SLIIT_LOGO}) no-repeat center center`,
+        backgroundSize: 'contain',
+        opacity: 0.06,
+        zIndex: 0
       }
-    >
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
+    }}>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 700, letterSpacing: 1 }}>
+            Lecturer Management
+          </Typography>
+          <Button variant="contained" color="primary" onClick={handleOpen} sx={{ fontWeight: 600, borderRadius: 2, boxShadow: 2 }}>
+            Add New Lecturer
+          </Button>
+        </Box>
 
-      <Grid container spacing={3}>
-        {Array.isArray(lecturers) && lecturers.map(renderLecturerCard)}
-      </Grid>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        )}
 
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Lecturer' : 'Add New Lecturer'}</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  error={!!validationErrors.name}
-                  helperText={validationErrors.name}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={!!validationErrors.email}
-                  helperText={validationErrors.email}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  name="phone_number"
-                  value={formData.phone_number}
-                  onChange={handleChange}
-                  error={!!validationErrors.phone_number}
-                  helperText={validationErrors.phone_number}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Department"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleChange}
-                  error={!!validationErrors.department}
-                  helperText={validationErrors.department}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Rank"
-                  name="rank"
-                  value={formData.rank}
-                  onChange={handleChange}
-                  error={!!validationErrors.rank}
-                  helperText={validationErrors.rank}
-                  required
-                >
-                  {ranks.map((rank) => (
-                    <MenuItem key={rank} value={rank}>
-                      {rank}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Specialization"
-                  name="specialization"
-                  value={formData.specialization}
-                  onChange={handleChange}
-                  error={!!validationErrors.specialization}
-                  helperText={validationErrors.specialization}
-                  SelectProps={{
-                    multiple: true,
-                    MenuProps: {
-                      PaperProps: {
-                        style: {
-                          maxHeight: 224,
-                          width: 250
-                        }
-                      }
-                    }
-                  }}
-                  required
-                >
-                  {specializationOptions.map((spec) => (
-                    <MenuItem key={spec} value={spec}>
-                      {spec}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Modules"
-                  name="modules"
-                  value={formData.modules}
-                  onChange={handleChange}
-                  error={!!validationErrors.modules}
-                  helperText={validationErrors.modules}
-                  SelectProps={{
-                    multiple: true,
-                    MenuProps: {
-                      PaperProps: {
-                        style: {
-                          maxHeight: 224,
-                          width: 250
-                        }
-                      }
-                    }
-                  }}
-                  required
-                >
-                  {modules.map((module) => (
-                    <MenuItem key={module._id} value={module._id}>
-                      {module.module_name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              {!editMode && (
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    error={!!validationErrors.password}
-                    helperText={validationErrors.password}
-                    required
-                  />
-                </Grid>
+        <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 2 }}>
+          <Table>
+            <TableHead sx={{ bgcolor: 'primary.main' }}>
+              <TableRow>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Name</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Email</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Phone</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Department</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Specialization</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Rank</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Modules</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {lecturers.map((lecturer) => (
+                <TableRow key={lecturer._id}>
+                  <TableCell>{lecturer.name}</TableCell>
+                  <TableCell>{lecturer.email}</TableCell>
+                  <TableCell>{lecturer.phone_number}</TableCell>
+                  <TableCell>{lecturer.department}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {lecturer.specialization?.map((spec) => (
+                        <Chip key={spec} label={spec} size="small" color="primary" />
+                      ))}
+                    </Box>
+                  </TableCell>
+                  <TableCell>{lecturer.rank}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {lecturer.modules?.map((mod) => (
+                        <Chip key={mod._id || mod} label={mod.module_name || mod} size="small" color="secondary" />
+                      ))}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEdit(lecturer)} color="primary">
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(lecturer._id)} color="error">
+                      <Delete />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+          <DialogTitle>{editMode ? 'Edit Lecturer' : 'Add New Lecturer'}</DialogTitle>
+          <form onSubmit={handleSubmit}>
+            <DialogContent>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
               )}
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button 
-              type="submit" 
-              variant="contained" 
-              color="primary"
-              disabled={Object.values(validationErrors).some(error => error !== '')}
-            >
-              {editMode ? 'Update' : 'Add'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    </AdminLayout>
+              <TextField
+                fullWidth
+                label="Name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.name}
+                helperText={validationErrors.name}
+              />
+              <TextField
+                fullWidth
+                label="Email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.email}
+                helperText={validationErrors.email}
+              />
+              <TextField
+                fullWidth
+                label="Phone Number"
+                name="phone_number"
+                value={formData.phone_number}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.phone_number}
+                helperText={validationErrors.phone_number}
+              />
+              <TextField
+                fullWidth
+                label="Department"
+                name="department"
+                value={formData.department}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.department}
+                helperText={validationErrors.department}
+              />
+              <TextField
+                fullWidth
+                select
+                multiple
+                label="Specialization"
+                name="specialization"
+                value={formData.specialization}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.specialization}
+                helperText={validationErrors.specialization}
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (
+                        <Chip key={value} label={value} />
+                      ))}
+                    </Box>
+                  ),
+                }}
+              >
+                {specializationOptions.map((spec) => (
+                  <MenuItem key={spec} value={spec}>
+                    {spec}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                fullWidth
+                select
+                label="Rank"
+                name="rank"
+                value={formData.rank}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.rank}
+                helperText={validationErrors.rank}
+              >
+                {ranks.map((rank) => (
+                  <MenuItem key={rank} value={rank}>
+                    {rank}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                fullWidth
+                select
+                multiple
+                label="Modules"
+                name="modules"
+                value={formData.modules}
+                onChange={handleChange}
+                margin="normal"
+                error={!!validationErrors.modules}
+                helperText={validationErrors.modules}
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => {
+                        const module = modules.find(m => m._id === value);
+                        return (
+                          <Chip
+                            key={value}
+                            label={module ? module.module_name : value}
+                            size="small"
+                          />
+                        );
+                      })}
+                    </Box>
+                  ),
+                }}
+              >
+                {modules.map((module) => (
+                  <MenuItem key={module._id} value={module._id}>
+                    {module.module_name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              {!editMode && (
+                <TextField
+                  fullWidth
+                  label="Password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                  error={!!validationErrors.password}
+                  helperText={validationErrors.password}
+                />
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleClose}>Cancel</Button>
+              <Button onClick={handleSubmit} variant="contained" color="primary">
+                {editMode ? 'Update' : 'Add'}
+              </Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+      </Container>
+    </Box>
   );
 };
 
