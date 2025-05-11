@@ -20,18 +20,12 @@ import {
   Alert,
   Chip,
   Grid,
-  Card,
-  CardContent,
-  Avatar,
-  Tooltip,
-  Divider,
-  FormControlLabel,
-  Switch
+  Container
 } from '@mui/material';
-import { Edit, Delete, Visibility, Add, School, Group, CalendarToday, AccessTime } from '@mui/icons-material';
+import { Edit, Delete, Visibility } from '@mui/icons-material';
 import { getBatches, addBatch, updateBatch, deleteBatch, getModules } from '../../services/api';
-import AdminLayout from './AdminLayout';
-import { validateBatchName, validateAcademicYear, validateSemester, validateNumberOfGroups } from '../../utils/validations';
+import { SLIIT_LOGO } from '../../assets/images';
+import { useTheme, alpha } from '@mui/material';
 
 const BatchManagement = () => {
   const [batches, setBatches] = useState([]);
@@ -52,27 +46,7 @@ const BatchManagement = () => {
     group_count: 1
   });
   const [validationErrors, setValidationErrors] = useState({});
-
-  const departmentOptions = [
-    'Computer Science',
-    'Information Technology',
-    'Software Engineering',
-    'Data Science',
-    'Business Information Systems',
-    'Computer Engineering',
-    'Electrical Engineering',
-    'Electronic Engineering',
-    'Mechanical Engineering',
-    'Civil Engineering',
-    'Chemical Engineering',
-    'Industrial Engineering',
-    'Management',
-    'Marketing',
-    'Finance',
-    'Accounting',
-    'Economics',
-    'Business Administration'
-  ];
+  const theme = useTheme();
 
   const weekTypes = ['Weekday', 'Weekend'];
 
@@ -158,31 +132,36 @@ const BatchManagement = () => {
     switch (name) {
       case 'batch_name':
         if (!value) return 'Batch name is required';
-        if (!validateBatchName(value)) return 'Batch name should not contain special characters';
+        if (value.length < 2) return 'Batch name must be at least 2 characters';
         return '';
       case 'department':
         if (!value) return 'Department is required';
+        if (value.length < 2) return 'Department must be at least 2 characters';
         return '';
       case 'academic_year':
         if (!value) return 'Academic year is required';
-        if (!validateAcademicYear(value)) return 'Academic year must be between 2000 and 2025';
-        return '';
-      case 'semester':
-        if (!value) return 'Semester is required';
-        return '';
-      case 'group_count':
-        if (!value) return 'Number of groups is required';
-        if (!validateNumberOfGroups(value)) return 'Number of groups must be between 1 and 20';
+        if (isNaN(value) || value <= 0) return 'Academic year must be a positive number';
+        if (value < 2000 || value > 2100) return 'Please enter a valid academic year';
         return '';
       case 'num_of_students':
         if (!value) return 'Number of students is required';
         if (isNaN(value) || value <= 0) return 'Number of students must be a positive number';
+        if (value > 500) return 'Number of students cannot exceed 500';
+        return '';
+      case 'semester':
+        if (!value) return 'Semester is required';
+        if (isNaN(value) || value < 1 || value > 8) return 'Semester must be between 1 and 8';
         return '';
       case 'weekend_or_weekday':
         if (!value) return 'Schedule type is required';
         return '';
+      case 'group_count':
+        if (!value) return 'Number of groups is required';
+        if (isNaN(value) || value <= 0) return 'Number of groups must be a positive number';
+        if (value > 10) return 'Number of groups cannot exceed 10';
+        return '';
       case 'modules':
-        if (!value || value.length === 0) return 'At least one module is required';
+        if (!value || value.length === 0) return 'At least one module must be selected';
         return '';
       default:
         return '';
@@ -191,7 +170,7 @@ const BatchManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Update form data
     setFormData(prev => ({
       ...prev,
@@ -274,353 +253,295 @@ const BatchManagement = () => {
     setDetailsOpen(true);
   };
 
-  const renderBatchCard = (batch) => (
-    <Grid item xs={12} sm={6} md={4} key={batch._id}>
-      <Card 
-        sx={{ 
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'transform 0.2s',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: 3
-          }
-        }}
-      >
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Avatar 
-              sx={{ 
-                width: 56, 
-                height: 56, 
-                mr: 2,
-                bgcolor: 'primary.main'
-              }}
-            >
-              <School sx={{ fontSize: 32 }} />
-            </Avatar>
-            <Box>
-              <Typography variant="h6" component="div">
-                {batch.batch_name}
-              </Typography>
-              <Typography color="text.secondary" variant="subtitle2">
-                {batch.batch_code}
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Group sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="body2">
-                  Students: {batch.registered_students} / {batch.num_of_students}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <CalendarToday sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="body2">
-                  {batch.academic_year} - Semester {batch.semester}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <AccessTime sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="body2">
-                  {batch.weekend_or_weekday} Schedule
-                </Typography>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Divider sx={{ my: 1 }} />
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                Modules
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {batch.modules?.map((module) => {
-                  let moduleName = '';
-                  if (typeof module === 'object') {
-                    moduleName = module.module_name || module.name;
-                  } else {
-                    const foundModule = modules.find(m => m._id === module);
-                    moduleName = foundModule ? foundModule.module_name : module;
-                  }
-                  return (
-                    <Chip
-                      key={typeof module === 'object' ? module._id : module}
-                      label={moduleName}
-                      size="small"
-                      color="secondary"
-                      variant="outlined"
-                    />
-                  );
-                })}
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-        
-        <Box sx={{ mt: 'auto', p: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="View Details">
-            <IconButton 
-              color="primary" 
-              onClick={() => handleViewDetails(batch)}
-              size="small"
-            >
-              <Visibility />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Edit Batch">
-            <IconButton 
-              color="primary" 
-              onClick={() => handleEdit(batch)}
-              size="small"
-            >
-              <Edit />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete Batch">
-            <IconButton 
-              color="error" 
-              onClick={() => handleDelete(batch._id)}
-              size="small"
-            >
-              <Delete />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Card>
-    </Grid>
-  );
-
   return (
-    <AdminLayout 
-      title="Batch Management"
-      actions={
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<Add />}
-          onClick={handleOpen}
-        >
-          Add New Batch
-        </Button>
+    <Box sx={{
+      minHeight: '100vh',
+      position: 'relative',
+      bgcolor: alpha(theme.palette.primary.main, 0.01),
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: '220px',
+        height: '220px',
+        background: `url(${SLIIT_LOGO}) no-repeat center center`,
+        backgroundSize: 'contain',
+        opacity: 0.06,
+        zIndex: 0
       }
-    >
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      <Grid container spacing={3}>
-        {Array.isArray(batches) && batches.map(renderBatchCard)}
-      </Grid>
-
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Batch' : 'Add New Batch'}</DialogTitle>
-        <DialogContent>
-          <Box component="form" sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="batch_name"
-                  label="Batch Name"
-                  fullWidth
-                  value={formData.batch_name}
-                  onChange={handleInputChange}
-                  required
-                  error={!!validationErrors.batch_name}
-                  helperText={validationErrors.batch_name}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="department"
-                  label="Department"
-                  select
-                  fullWidth
-                  value={formData.department}
-                  onChange={handleInputChange}
-                  required
-                  error={!!validationErrors.department}
-                  helperText={validationErrors.department}
-                >
-                  {departmentOptions.map((dept) => (
-                    <MenuItem key={dept} value={dept}>
-                      {dept}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="academic_year"
-                  label="Academic Year"
-                  type="number"
-                  fullWidth
-                  value={formData.academic_year}
-                  onChange={handleInputChange}
-                  required
-                  error={!!validationErrors.academic_year}
-                  helperText={validationErrors.academic_year}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="num_of_students"
-                  label="Number of Students"
-                  type="number"
-                  fullWidth
-                  value={formData.num_of_students}
-                  onChange={handleInputChange}
-                  required
-                  error={!!validationErrors.num_of_students}
-                  helperText={validationErrors.num_of_students}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="semester"
-                  label="Semester"
-                  type="number"
-                  fullWidth
-                  value={formData.semester}
-                  onChange={handleInputChange}
-                  required
-                  error={!!validationErrors.semester}
-                  helperText={validationErrors.semester}
-                  inputProps={{ min: 1, max: 8 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="weekend_or_weekday"
-                  label="Schedule Type"
-                  select
-                  fullWidth
-                  value={formData.weekend_or_weekday}
-                  onChange={handleInputChange}
-                  required
-                  error={!!validationErrors.weekend_or_weekday}
-                  helperText={validationErrors.weekend_or_weekday}
-                >
-                  {weekTypes.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="group_count"
-                  label="Number of Groups"
-                  type="number"
-                  fullWidth
-                  value={formData.group_count}
-                  onChange={handleInputChange}
-                  required
-                  error={!!validationErrors.group_count}
-                  helperText={validationErrors.group_count}
-                  inputProps={{ min: 1 }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="modules"
-                  label="Modules"
-                  select
-                  fullWidth
-                  error={!!validationErrors.modules}
-                  helperText={validationErrors.modules}
-                  SelectProps={{
-                    multiple: true,
-                    value: formData.modules,
-                    onChange: (e) => handleInputChange({
-                      target: {
-                        name: 'modules',
-                        value: e.target.value
-                      }
-                    })
-                  }}
-                >
-                  {modules.map((module) => (
-                    <MenuItem key={module._id} value={module._id}>
-                      {module.module_name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-            </Grid>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            {editMode ? 'Update' : 'Add'}
+    }}>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 700, letterSpacing: 1 }}>
+            Batch Management
+          </Typography>
+          <Button variant="contained" color="primary" onClick={handleOpen} sx={{ fontWeight: 600, borderRadius: 2, boxShadow: 2 }}>
+            Add New Batch
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
 
-      <Dialog open={detailsOpen} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>Batch Details</DialogTitle>
-        <DialogContent>
-          {selectedBatch && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                {selectedBatch.batch_name}
-              </Typography>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography><strong>Registration Code:</strong> {selectedBatch.registration_code}</Typography>
-                <Typography variant="body2">
-                  Share this code with students to allow them to register for this batch.
-                </Typography>
-              </Alert>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <TableContainer component={Paper}>
+          <Table stickyHeader aria-label="batches table">
+            <TableHead>
+              <TableRow>
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    style={{ minWidth: column.minWidth }}
+                  >
+                    {column.label}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {batches.map((batch) => (
+                <TableRow hover role="checkbox" tabIndex={-1} key={batch._id}>
+                  <TableCell>{batch.batch_name}</TableCell>
+                  <TableCell>{batch.batch_code}</TableCell>
+                  <TableCell>{batch.department}</TableCell>
+                  <TableCell>{batch.academic_year}</TableCell>
+                  <TableCell>{batch.semester}</TableCell>
+                  <TableCell>{batch.num_of_students}</TableCell>
+                  <TableCell>{batch.registered_students} / {batch.num_of_students}</TableCell>
+                  <TableCell>{batch.group_count}</TableCell>
+                  <TableCell>{batch.weekend_or_weekday}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {batch.modules?.map((module) => {
+                        console.log('Module data:', module); // Debug log
+                        return (
+                          <Chip
+                            key={module._id}
+                            label={`${module.module_name}${module.credit_hours ? ` (${module.credit_hours} credits)` : ''}`}
+                            size="small"
+                            sx={{ m: 0.5 }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleViewDetails(batch)} color="primary">
+                      <Visibility />
+                    </IconButton>
+                    <IconButton onClick={() => handleEdit(batch)} color="primary">
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(batch._id)} color="error">
+                      <Delete />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+          <DialogTitle>{editMode ? 'Edit Batch' : 'Add New Batch'}</DialogTitle>
+          <DialogContent>
+            <Box component="form" sx={{ mt: 2 }}>
               <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography><strong>Department:</strong> {selectedBatch.department}</Typography>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="batch_name"
+                    label="Batch Name"
+                    fullWidth
+                    value={formData.batch_name}
+                    onChange={handleInputChange}
+                    required
+                    error={!!validationErrors.batch_name}
+                    helperText={validationErrors.batch_name}
+                  />
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography><strong>Academic Year:</strong> {selectedBatch.academic_year}</Typography>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="department"
+                    label="Department"
+                    fullWidth
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    required
+                    error={!!validationErrors.department}
+                    helperText={validationErrors.department}
+                  />
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography><strong>Semester:</strong> {selectedBatch.semester}</Typography>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="academic_year"
+                    label="Academic Year"
+                    type="number"
+                    fullWidth
+                    value={formData.academic_year}
+                    onChange={handleInputChange}
+                    required
+                    error={!!validationErrors.academic_year}
+                    helperText={validationErrors.academic_year}
+                  />
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography><strong>Schedule Type:</strong> {selectedBatch.weekend_or_weekday}</Typography>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="num_of_students"
+                    label="Number of Students"
+                    type="number"
+                    fullWidth
+                    value={formData.num_of_students}
+                    onChange={handleInputChange}
+                    required
+                    error={!!validationErrors.num_of_students}
+                    helperText={validationErrors.num_of_students}
+                  />
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography><strong>Number of Students:</strong> {selectedBatch.num_of_students}</Typography>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="semester"
+                    label="Semester"
+                    type="number"
+                    fullWidth
+                    value={formData.semester}
+                    onChange={handleInputChange}
+                    required
+                    error={!!validationErrors.semester}
+                    helperText={validationErrors.semester}
+                    inputProps={{ min: 1, max: 8 }}
+                  />
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography><strong>Registered Students:</strong> {selectedBatch.registered_students} / {selectedBatch.num_of_students}</Typography>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="weekend_or_weekday"
+                    label="Schedule Type"
+                    select
+                    fullWidth
+                    value={formData.weekend_or_weekday}
+                    onChange={handleInputChange}
+                    required
+                    error={!!validationErrors.weekend_or_weekday}
+                    helperText={validationErrors.weekend_or_weekday}
+                  >
+                    {weekTypes.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography><strong>Number of Groups:</strong> {selectedBatch.group_count}</Typography>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    name="group_count"
+                    label="Number of Groups"
+                    type="number"
+                    fullWidth
+                    value={formData.group_count}
+                    onChange={handleInputChange}
+                    required
+                    error={!!validationErrors.group_count}
+                    helperText={validationErrors.group_count}
+                    inputProps={{ min: 1 }}
+                  />
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography><strong>Modules:</strong></Typography>
-                  <Box sx={{ mt: 1 }}>
-                    {selectedBatch.modules.map((module) => (
-                      <Chip
-                        key={module._id}
-                        label={`${module.module_name} (${module.credit_hours} credits)`}
-                        sx={{ m: 0.5 }}
-                      />
+                  <TextField
+                    name="modules"
+                    label="Modules"
+                    select
+                    fullWidth
+                    error={!!validationErrors.modules}
+                    helperText={validationErrors.modules}
+                    SelectProps={{
+                      multiple: true,
+                      value: formData.modules,
+                      onChange: (e) => handleInputChange({
+                        target: {
+                          name: 'modules',
+                          value: e.target.value
+                        }
+                      })
+                    }}
+                  >
+                    {modules.map((module) => (
+                      <MenuItem key={module._id} value={module._id}>
+                        {module.module_name}
+                      </MenuItem>
                     ))}
-                  </Box>
+                  </TextField>
                 </Grid>
               </Grid>
             </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Close</Button>
-        </DialogActions>
-      </Dialog>
-    </AdminLayout>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button onClick={handleSubmit} variant="contained" color="primary">
+              {editMode ? 'Update' : 'Add'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={detailsOpen} onClose={handleClose} maxWidth="md" fullWidth>
+          <DialogTitle>Batch Details</DialogTitle>
+          <DialogContent>
+            {selectedBatch && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  {selectedBatch.batch_name}
+                </Typography>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography><strong>Registration Code:</strong> {selectedBatch.registration_code}</Typography>
+                  <Typography variant="body2">
+                    Share this code with students to allow them to register for this batch.
+                  </Typography>
+                </Alert>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography><strong>Department:</strong> {selectedBatch.department}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography><strong>Academic Year:</strong> {selectedBatch.academic_year}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography><strong>Semester:</strong> {selectedBatch.semester}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography><strong>Schedule Type:</strong> {selectedBatch.weekend_or_weekday}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography><strong>Number of Students:</strong> {selectedBatch.num_of_students}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography><strong>Registered Students:</strong> {selectedBatch.registered_students} / {selectedBatch.num_of_students}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography><strong>Number of Groups:</strong> {selectedBatch.group_count}</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography><strong>Modules:</strong></Typography>
+                    <Box sx={{ mt: 1 }}>
+                      {selectedBatch.modules.map((module) => (
+                        <Chip
+                          key={module._id}
+                          label={`${module.module_name} (${module.credit_hours} credits)`}
+                          sx={{ m: 0.5 }}
+                        />
+                      ))}
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleClose}>Close</Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </Box>
   );
 };
 

@@ -8,6 +8,9 @@ import BatchManagement from './BatchManagement';
 import TimetableManagement from './TimetableManagement';
 import ChangeRequestsManagement from './ChangeRequestsManagement';
 import AdminLayout from './AdminLayout';
+import ProductivityTracker from '../productivity/ProductivityTracker';
+import VoiceCommandInterface from '../voice/VoiceCommandInterface';
+import AdminAnalyticsDashboard from './AdminAnalyticsDashboard';
 
 const AdminRoutes = () => {
   return (
@@ -20,6 +23,9 @@ const AdminRoutes = () => {
         <Route path="batches" element={<BatchManagement />} />
         <Route path="timetable" element={<TimetableManagement />} />
         <Route path="change-requests" element={<ChangeRequestsManagement />} />
+        <Route path="productivity" element={<ProductivityTracker />} />
+        <Route path="voice-commands" element={<VoiceCommandInterface />} />
+        <Route path="analytics" element={<AdminAnalyticsDashboard />} />
         <Route path="" element={<Navigate to="dashboard" replace />} />
       </Routes>
     </AdminLayout>
