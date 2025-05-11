@@ -7,25 +7,25 @@ import {
   DialogContent,
   DialogTitle,
   TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
   IconButton,
   Typography,
   MenuItem,
   Alert,
-  Grid,
-  Card,
-  CardContent,
-  Avatar,
-  Tooltip,
-  Divider,
+  Container,
   Chip,
-  FormControlLabel,
-  Switch
+  useTheme,
+  alpha
 } from '@mui/material';
-import { Edit, Delete, Add, Room, People, Computer, Wifi } from '@mui/icons-material';
+import { Edit, Delete } from '@mui/icons-material';
 import { getHalls, addHall, updateHall, deleteHall } from '../../services/api';
-import AdminLayout from './AdminLayout';
-import { validateHallName, validateFloor } from '../../utils/validations';
+import { SLIIT_LOGO } from '../../assets/images';
 
 const HallManagement = () => {
   const [halls, setHalls] = useState([]);
@@ -35,42 +35,25 @@ const HallManagement = () => {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     hall_name: '',
+    capacity: '',
+    type: '',
     building: '',
     floor: '',
-    type: 'lecture',
-    capacity: '',
     facilities: []
   });
   const [validationErrors, setValidationErrors] = useState({
     hall_name: '',
+    capacity: '',
+    type: '',
     building: '',
     floor: '',
-    type: '',
-    capacity: '',
     facilities: ''
   });
 
-  const facilityOptions = [
-    'Projector',
-    'Air Conditioning',
-    'Smart Board',
-    'Sound System',
-    'Lab Equipment',
-    'High-Speed Internet',
-    'Whiteboard',
-    'Chalkboard'
-  ];
+  const types = ['lab', 'lecture', 'tutorial'];
+  const facilityOptions = ['Projector', 'Whiteboard', 'Computer Lab', 'Air Conditioning', 'Smart Board'];
 
-  const hallTypes = [
-    { value: 'lecture', label: 'Lecture Hall' },
-    { value: 'lab', label: 'Laboratory' },
-    { value: 'tutorial', label: 'Tutorial Room' }
-  ];
-
-  const buildingOptions = [
-    'Main Building',
-    'New Building'
-  ];
+  const theme = useTheme();
 
   useEffect(() => {
     fetchHalls();
@@ -79,7 +62,9 @@ const HallManagement = () => {
   const fetchHalls = async () => {
     try {
       const response = await getHalls();
-      if (Array.isArray(response)) {
+      if (response && response.success) {
+        setHalls(response.data);
+      } else if (Array.isArray(response)) {
         setHalls(response);
       } else {
         console.error('Invalid halls data in response');
@@ -96,24 +81,23 @@ const HallManagement = () => {
     switch (name) {
       case 'hall_name':
         if (!value) return 'Hall name is required';
-        if (!validateHallName(value)) return 'Hall name should not contain special characters';
+        if (value.length < 2) return 'Hall name must be at least 2 characters';
+        return '';
+      case 'capacity':
+        if (!value) return 'Capacity is required';
+        if (isNaN(value) || value <= 0) return 'Capacity must be a positive number';
+        return '';
+      case 'type':
+        if (!value) return 'Hall type is required';
         return '';
       case 'building':
         if (!value) return 'Building is required';
         return '';
       case 'floor':
         if (!value) return 'Floor is required';
-        if (!validateFloor(value)) return 'Floor number must be between 0 and 15';
-        return '';
-      case 'type':
-        if (!value) return 'Hall type is required';
-        return '';
-      case 'capacity':
-        if (!value) return 'Capacity is required';
-        if (isNaN(value) || value < 1) return 'Capacity must be a positive number';
+        if (isNaN(value)) return 'Floor must be a number';
         return '';
       case 'facilities':
-        if (!value || value.length === 0) return 'At least one facility is required';
         return '';
       default:
         return '';
@@ -125,10 +109,10 @@ const HallManagement = () => {
     setEditMode(false);
     setFormData({
       hall_name: '',
+      capacity: '',
+      type: '',
       building: '',
       floor: '',
-      type: 'lecture',
-      capacity: '',
       facilities: []
     });
     setValidationErrors({});
@@ -137,13 +121,14 @@ const HallManagement = () => {
   const handleEdit = (hall) => {
     setSelectedHall(hall);
     setFormData({
-      hall_name: hall.hall_name || '',
-      building: hall.building || '',
-      floor: hall.floor || '',
-      type: hall.type || 'lecture',
-      capacity: hall.capacity || '',
-      facilities: hall.facilities || []
+      hall_name: hall.hall_name,
+      capacity: hall.capacity,
+      type: hall.type,
+      building: hall.building,
+      floor: hall.floor,
+      facilities: Array.isArray(hall.facilities) ? hall.facilities : []
     });
+    setValidationErrors({});
     setEditMode(true);
     setOpen(true);
   };
@@ -157,11 +142,11 @@ const HallManagement = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Update form data
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'facilities' ? value : value
     }));
 
     // Validate the field
@@ -176,38 +161,33 @@ const HallManagement = () => {
     e.preventDefault();
     setError(null);
 
+    // Validate all fields
     const errors = {
       hall_name: validateField('hall_name', formData.hall_name),
-      building: validateField('building', formData.building),
-      floor: validateField('floor', formData.floor),
-      type: validateField('type', formData.type),
       capacity: validateField('capacity', formData.capacity),
-      facilities: validateField('facilities', formData.facilities)
+      type: validateField('type', formData.type),
+      building: validateField('building', formData.building),
+      floor: validateField('floor', formData.floor)
     };
 
     setValidationErrors(errors);
 
+    // Check if there are any validation errors
     if (Object.values(errors).some(error => error !== '')) {
       return;
     }
 
     try {
-      const hallData = {
-        ...formData,
-        capacity: parseInt(formData.capacity, 10),
-        floor: parseInt(formData.floor, 10)
-      };
-
       if (editMode) {
-        await updateHall(selectedHall._id, hallData);
+        await updateHall(selectedHall._id, formData);
       } else {
-        await addHall(hallData);
+        await addHall(formData);
       }
       handleClose();
       fetchHalls();
     } catch (error) {
-      console.error('Error submitting data:', error);
-      setError(error.message || 'Error saving hall');
+      console.error('Error saving hall:', error);
+      setError(error.message || 'Failed to save hall');
     }
   };
 
@@ -222,248 +202,197 @@ const HallManagement = () => {
     }
   };
 
-  const renderHallCard = (hall) => (
-    <Grid item xs={12} sm={6} md={4} key={hall._id}>
-      <Card 
-        sx={{ 
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'transform 0.2s',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: 3
-          }
-        }}
-      >
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Avatar 
-              sx={{ 
-                width: 56, 
-                height: 56, 
-                mr: 2,
-                bgcolor: hall.is_lab ? 'secondary.main' : 'primary.main'
-              }}
-            >
-              <Room sx={{ fontSize: 32 }} />
-            </Avatar>
-            <Box>
-              <Typography variant="h6" component="div">
-                {hall.hall_name}
-              </Typography>
-              <Typography color="text.secondary" variant="subtitle2">
-                {hall.is_lab ? 'Laboratory' : 'Lecture Hall'}
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <People sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="body2">
-                  Capacity: {hall.capacity} students
-                </Typography>
-              </Box>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Divider sx={{ my: 1 }} />
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                Facilities
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {hall.facilities?.map((facility) => (
-                  <Chip 
-                    key={facility} 
-                    label={facility} 
-                    size="small" 
-                    color="primary"
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-        
-        <Box sx={{ mt: 'auto', p: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Edit Hall">
-            <IconButton 
-              color="primary" 
-              onClick={() => handleEdit(hall)}
-              size="small"
-            >
-              <Edit />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete Hall">
-            <IconButton 
-              color="error" 
-              onClick={() => handleDelete(hall._id)}
-              size="small"
-            >
-              <Delete />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Card>
-    </Grid>
-  );
-
   return (
-    <AdminLayout 
-      title="Hall Management"
-      actions={
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<Add />}
-          onClick={handleOpen}
-        >
-          Add New Hall
-        </Button>
+    <Box sx={{
+      minHeight: '100vh',
+      position: 'relative',
+      bgcolor: alpha(theme.palette.primary.main, 0.01),
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: '220px',
+        height: '220px',
+        background: `url(${SLIIT_LOGO}) no-repeat center center`,
+        backgroundSize: 'contain',
+        opacity: 0.06,
+        zIndex: 0
       }
-    >
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
+    }}>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 700, letterSpacing: 1 }}>
+            Hall Management
+          </Typography>
+          <Button variant="contained" color="primary" onClick={handleOpen} sx={{ fontWeight: 600, borderRadius: 2, boxShadow: 2 }}>
+            Add New Hall
+          </Button>
+        </Box>
 
-      <Grid container spacing={3}>
-        {Array.isArray(halls) && halls.map(renderHallCard)}
-      </Grid>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Hall' : 'Add New Hall'}</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Hall Name"
-                  name="hall_name"
-                  value={formData.hall_name}
-                  onChange={handleChange}
-                  error={!!validationErrors.hall_name}
-                  helperText={validationErrors.hall_name}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Building"
-                  name="building"
-                  value={formData.building}
-                  onChange={handleChange}
-                  error={!!validationErrors.building}
-                  helperText={validationErrors.building}
-                  required
-                >
-                  {buildingOptions.map((building) => (
-                    <MenuItem key={building} value={building}>
-                      {building}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Floor"
-                  name="floor"
-                  type="number"
-                  value={formData.floor}
-                  onChange={handleChange}
-                  error={!!validationErrors.floor}
-                  helperText={validationErrors.floor}
-                  inputProps={{ min: 0, max: 15 }}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Hall Type"
-                  name="type"
-                  value={formData.type}
-                  onChange={handleChange}
-                  error={!!validationErrors.type}
-                  helperText={validationErrors.type}
-                  required
-                >
-                  {hallTypes.map((type) => (
-                    <MenuItem key={type.value} value={type.value}>
-                      {type.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Capacity"
-                  name="capacity"
-                  type="number"
-                  value={formData.capacity}
-                  onChange={handleChange}
-                  error={!!validationErrors.capacity}
-                  helperText={validationErrors.capacity}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Facilities"
-                  name="facilities"
-                  value={formData.facilities}
-                  onChange={handleChange}
-                  error={!!validationErrors.facilities}
-                  helperText={validationErrors.facilities}
-                  SelectProps={{
-                    multiple: true,
-                    MenuProps: {
-                      PaperProps: {
-                        style: {
-                          maxHeight: 224,
-                          width: 250
-                        }
-                      }
-                    }
-                  }}
-                  required
-                >
-                  {facilityOptions.map((facility) => (
-                    <MenuItem key={facility} value={facility}>
-                      {facility}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button 
-              type="submit" 
-              variant="contained" 
-              color="primary"
-              disabled={Object.values(validationErrors).some(error => error !== '')}
-            >
-              {editMode ? 'Update' : 'Add'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    </AdminLayout>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Hall Name</TableCell>
+                <TableCell>Capacity</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Building</TableCell>
+                <TableCell>Floor</TableCell>
+                <TableCell>Facilities</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {halls.map((hall) => (
+                <TableRow key={hall._id}>
+                  <TableCell>{hall.hall_name}</TableCell>
+                  <TableCell>{hall.capacity}</TableCell>
+                  <TableCell>{hall.type}</TableCell>
+                  <TableCell>{hall.building}</TableCell>
+                  <TableCell>{hall.floor}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {hall.facilities?.map((facility) => (
+                        <Chip key={facility} label={facility} size="small" />
+                      ))}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEdit(hall)} color="primary">
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(hall._id)} color="error">
+                      <Delete />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+          <DialogTitle>{editMode ? 'Edit Hall' : 'Add New Hall'}</DialogTitle>
+          <form onSubmit={handleSubmit}>
+            <DialogContent>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+              <TextField
+                fullWidth
+                label="Hall Name"
+                name="hall_name"
+                value={formData.hall_name}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.hall_name}
+                helperText={validationErrors.hall_name}
+              />
+              <TextField
+                fullWidth
+                label="Capacity"
+                name="capacity"
+                type="number"
+                value={formData.capacity}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.capacity}
+                helperText={validationErrors.capacity}
+              />
+              <TextField
+                fullWidth
+                select
+                label="Type"
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.type}
+                helperText={validationErrors.type}
+              >
+                {types.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                fullWidth
+                label="Building"
+                name="building"
+                value={formData.building}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.building}
+                helperText={validationErrors.building}
+              />
+              <TextField
+                fullWidth
+                label="Floor"
+                name="floor"
+                type="number"
+                value={formData.floor}
+                onChange={handleChange}
+                margin="normal"
+                required
+                error={!!validationErrors.floor}
+                helperText={validationErrors.floor}
+              />
+              <TextField
+                fullWidth
+                select
+                multiple
+                label="Facilities"
+                name="facilities"
+                value={formData.facilities}
+                onChange={handleChange}
+                margin="normal"
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => (
+                        <Chip key={value} label={value} />
+                      ))}
+                    </Box>
+                  ),
+                }}
+              >
+                {facilityOptions.map((facility) => (
+                  <MenuItem key={facility} value={facility}>
+                    {facility}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleClose}>Cancel</Button>
+              <Button 
+                type="submit" 
+                variant="contained" 
+                color="primary"
+                disabled={Object.values(validationErrors).some(error => error !== '')}
+              >
+                {editMode ? 'Update' : 'Add'}
+              </Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+      </Container>
+    </Box>
   );
 };
 
